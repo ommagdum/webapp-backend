@@ -6,6 +6,7 @@ import com.mlspamdetection.webapp_backend.dto.RegisterRequest;
 import com.mlspamdetection.webapp_backend.model.User;
 import com.mlspamdetection.webapp_backend.repo.UserRepository;
 import com.mlspamdetection.webapp_backend.security.JwtUtil;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
+
     private final AuthenticationManager authenticationManager;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
