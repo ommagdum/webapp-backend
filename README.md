@@ -32,4 +32,4 @@ docker-compose up --build  # Starts PostgreSQL + Spring Boot
 mvn spring-boot:run        # Local development  
 ```
 
-**Frontend**: [webapp-frontend](https://github.com/yourusername/webapp-frontend) (React + Tailwind CSS)  
+**Frontend**: [webapp-frontend](https://github.com/yourusername/webapp-frontend) (React + Tailwind CSS)  (Yet To Implement)
