@@ -10,16 +10,18 @@ import com.mlspamdetection.webapp_backend.service.MLServiceClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.parameters.P;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.HashMap;
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api")
-public class SpamCheckController {
+public class SpamController {
 
     @Autowired
     private MLServiceClient mlServiceClient;
@@ -30,25 +32,31 @@ public class SpamCheckController {
     @Autowired
     private UserRepository userRepository;
 
-    @PostMapping("/check-spam")
+    @PostMapping("/predict")
     public ResponseEntity<?> checkSpam(
-            @RequestBody SpamCheckRequest request,
+            @RequestBody Map<String, String> request,
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        PredictionResult result = mlServiceClient.getPrediction(request.getEmailText());
+        String emailText = request.get("email_text");
+        if (emailText == null) {
+            return ResponseEntity.badRequest().body("email_text is required");
+        }
 
-        User user = userRepository.findByUsername(userDetails.getUsername())
+        PredictionResult mlResult = mlServiceClient.getPrediction(emailText);
+
+        User user = userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         PredictionLog log = new PredictionLog();
         log.setUser(user);
-        log.setContent(request.getEmailText());
-        log.setIs_spam(result.getPrediction().equalsIgnoreCase("spam"));
-        log.setConfidence(result.getProbability());
+        log.setContent(emailText);
+        log.setIs_spam(mlResult.getPrediction().equalsIgnoreCase("spam"));
+        log.setConfidence(mlResult.getProbability());
         logRepository.save(log);
 
-        return ResponseEntity.ok(result);
+        Map<String, Object> response = new HashMap<>();
+        response.put("prediction", mlResult.getPrediction().equalsIgnoreCase("spam") ? 1 : 0);
+        response.put("probability", mlResult.getProbability());
+        return ResponseEntity.ok(response);
     }
-
-
 }

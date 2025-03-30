@@ -2,11 +2,12 @@ package com.mlspamdetection.webapp_backend.dto;
 
 public class AuthResponse {
     private String token;
-    private String username;
+    private String email;
 
-    public AuthResponse(String token, String username) {
+
+    public AuthResponse(String token, String email) {
         this.token = token;
-        this.username = username;
+        this.email = email;
     }
 
     public String getToken() {
@@ -17,11 +18,11 @@ public class AuthResponse {
         this.token = token;
     }
 
-    public String getUsername() {
-        return username;
+    public String getEmail() {
+        return email;
     }
 
-    public void setUsername(String username) {
-        this.username = username;
+    public void setEmail(String email) {
+        this.email = email;
     }
 }
