@@ -50,7 +50,7 @@ public class SpamController {
         PredictionLog log = new PredictionLog();
         log.setUser(user);
         log.setContent(emailText);
-        log.setIs_spam(mlResult.getPrediction().equalsIgnoreCase("spam"));
+        log.setIs_spam(mlResult.getPrediction() != null && mlResult.getPrediction().equalsIgnoreCase("spam"));
         log.setConfidence(mlResult.getProbability());
         logRepository.save(log);
 
