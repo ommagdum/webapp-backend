@@ -3,9 +3,12 @@ package com.mlspamdetection.webapp_backend.controller;
 import com.mlspamdetection.webapp_backend.dto.AuthResponse;
 import com.mlspamdetection.webapp_backend.dto.LoginRequest;
 import com.mlspamdetection.webapp_backend.dto.RegisterRequest;
+import com.mlspamdetection.webapp_backend.dto.ResendVerificationRequest;
 import com.mlspamdetection.webapp_backend.model.User;
 import com.mlspamdetection.webapp_backend.repo.UserRepository;
 import com.mlspamdetection.webapp_backend.security.JwtUtil;
+import com.mlspamdetection.webapp_backend.service.EmailVerificationService;
+import jakarta.mail.MessagingException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -17,12 +20,11 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.Collections;
+import java.util.Optional;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -32,13 +34,15 @@ public class AuthController {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final EmailVerificationService emailVerificationService;
 
     public AuthController(AuthenticationManager authenticationManager, UserRepository userRepository,
-                          PasswordEncoder passwordEncoder, JwtUtil jwtUtil) {
+                          PasswordEncoder passwordEncoder, JwtUtil jwtUtil, EmailVerificationService emailVerificationService) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
+        this.emailVerificationService = emailVerificationService;
     }
 
     @PostMapping("/register")
@@ -52,24 +56,35 @@ public class AuthController {
         User user = new User();
         user.setEmail(registerRequest.getEmail());
         user.setPassword(passwordEncoder.encode(registerRequest.getPassword()));
+        user.setVerified(false);
+        String verificationCode = UUID.randomUUID().toString();
+        user.setVerificationToken(verificationCode);
+
         userRepository.save(user);
 
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        registerRequest.getEmail(),
-                        registerRequest.getPassword()
-                )
-        );
-        SecurityContextHolder.getContext().setAuthentication(authentication);
-        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-        String jwt = jwtUtil.generateToken(userDetails);
+        try {
+            emailVerificationService.sendVerificationEmail(user);
+            return ResponseEntity.ok("Registration successful! Please check your email to verify your account.");
+        } catch (MessagingException e) {
+            return ResponseEntity
+                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Failed to send verification email: " + e.getMessage());
+        }
 
-        return ResponseEntity.ok(new AuthResponse(jwt, userDetails.getUsername()));
     }
 
     @PostMapping("/login")
     public ResponseEntity<?> authenticateUser(@RequestBody LoginRequest loginRequest) {
         try {
+
+            Optional<User> userOpt = userRepository.findByEmail(loginRequest.getEmail());
+            if(userOpt.isPresent() && !userOpt.get().isVerified()) {
+                return ResponseEntity
+                        .status(HttpStatus.UNAUTHORIZED)
+                        .body(Collections.singletonMap("error", "Email not verified. please check your email"));
+            }
+
+
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
                             loginRequest.getEmail(),
@@ -91,4 +106,38 @@ public class AuthController {
         }
     }
 
+    @GetMapping("/verify")
+    public ResponseEntity<?> verifyEmail(@RequestParam String token) {
+        Optional<User> userOptional = userRepository.findByVerificationToken(token);
+
+        if (userOptional.isPresent()) {
+            User user = userOptional.get();
+            user.setVerified(true);
+            user.setVerificationToken(null); // Clear the token after verification
+            userRepository.save(user);
+
+            return ResponseEntity.ok("Email verified successfully. You can now log in.");
+        } else {
+            return ResponseEntity.badRequest().body("Invalid verification token");
+        }
+    }
+
+
+    @PostMapping("/resend-verification")
+    public ResponseEntity<?> resendVerification(@RequestBody ResendVerificationRequest request) {
+        try {
+            boolean sent = emailVerificationService.resendVerificationEmail(request.getEmail());
+
+            if (sent) {
+                return ResponseEntity.ok(Collections.singletonMap("message",
+                        "Verification email has been resent. Please check your inbox."));
+            } else {
+                return ResponseEntity.badRequest().body(Collections.singletonMap("error",
+                        "User not found or already verified."));
+            }
+        } catch (MessagingException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Collections.singletonMap("error", "Failed to send verification email"));
+        }
+    }
 }

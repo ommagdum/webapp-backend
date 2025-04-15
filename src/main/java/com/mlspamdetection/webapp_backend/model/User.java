@@ -16,6 +16,12 @@ public class User {
     @Column(nullable = false)
     private String password;
 
+    @Column(name = "verification_token")
+    private String verificationToken;
+
+    @Column(name = "is_verified")
+    private boolean isVerified = false;
+
     public Long getId() {
         return id;
     }
@@ -38,5 +44,21 @@ public class User {
 
     public void setPassword(String password) {
         this.password = password;
+    }
+
+    public String getVerificationToken() {
+        return verificationToken;
+    }
+
+    public void setVerificationToken(String verificationToken) {
+        this.verificationToken = verificationToken;
+    }
+
+    public boolean isVerified() {
+        return isVerified;
+    }
+
+    public void setVerified(boolean isVerified) {
+        this.isVerified = isVerified;
     }
 }

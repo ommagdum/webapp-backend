@@ -2,6 +2,7 @@ package com.mlspamdetection.webapp_backend.service;
 
 import com.mlspamdetection.webapp_backend.model.User;
 import com.mlspamdetection.webapp_backend.repo.UserRepository;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -24,6 +25,11 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
 
+        // You might want to check if the user is verified before allowing login
+        if (!user.isVerified()) {
+            throw new UsernameNotFoundException("User email not verified");
+        }
+
         return org.springframework.security.core.userdetails.User.builder()
                 .username(user.getEmail())
                 .password(user.getPassword())
@@ -31,3 +37,4 @@ public class UserDetailsServiceImpl implements UserDetailsService {
                 .build();
     }
 }
+
