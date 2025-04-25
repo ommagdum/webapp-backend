@@ -2,6 +2,7 @@ package com.mlspamdetection.webapp_backend.service;
 
 import com.mlspamdetection.webapp_backend.model.User;
 import com.mlspamdetection.webapp_backend.repo.UserRepository;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -19,13 +20,22 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         this.userRepository = userRepository;
     }
 
-    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found with username: "+ username));
-        return new org.springframework.security.core.userdetails.User(
-                user.getUsername(),
-                user.getPassword(),
-                Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"))
-        );
+    @Override
+    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
+
+        // Make sure this condition is correct
+        if (!"google".equals(user.getAuthProvider()) && !user.isVerified()) {
+            throw new UsernameNotFoundException("User email not verified");
+        }
+
+        return org.springframework.security.core.userdetails.User.builder()
+                .username(user.getEmail())
+                .password(user.getPassword())
+                .roles("USER")
+                .build();
     }
+
 }
+

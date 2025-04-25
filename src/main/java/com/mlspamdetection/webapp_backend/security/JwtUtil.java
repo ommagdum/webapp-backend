@@ -1,18 +1,17 @@
 package com.mlspamdetection.webapp_backend.security;
 
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
 import java.security.Key;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Component
 public class JwtUtil {
@@ -54,9 +53,9 @@ public class JwtUtil {
         return extractExpiration(token).before(new Date());
     }
 
-    public String generateToken(UserDetails userDetails){
+    public String generateToken(UserDetails userDetails) {
         Map<String, Object> claims = new HashMap<>();
-        return createToken(claims, userDetails.getUsername());
+        return createToken(claims, userDetails.getUsername()); // username here is actually the email
     }
 
     private String createToken(Map<String, Object> claims, String username) {
@@ -69,8 +68,42 @@ public class JwtUtil {
                 .compact();
     }
 
-    public Boolean validateToken(String token, UserDetails userDetails){
-        final String username = extractUsername(token);
-        return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
+    public Boolean validateToken(String token) {
+        try {
+            Jwts.parser()
+                    .setSigningKey(getSignInKey())
+                    .build()
+                    .parseClaimsJws(token);
+            return true;
+        } catch (ExpiredJwtException ex) {
+            System.err.println("JWT expired");
+        } catch (MalformedJwtException ex) {
+            System.err.println("Invalid JWT format");
+        } catch (Exception ex) {
+            System.err.println("JWT validation failed");
+        }
+        return false;
     }
+    public Collection<? extends GrantedAuthority> getAuthoritiesFromToken(String token) {
+        Claims claims = extractAllClaims(token);
+
+        List<String> roles = claims.get("roles", List.class);
+
+        if (roles == null || roles.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        return roles.stream()
+                .map(role -> new SimpleGrantedAuthority("ROLE_" + role))
+                .collect(Collectors.toList());
+    }
+
+    public Claims validateAndParseToken(String token) {
+        return Jwts.parser()
+                .setSigningKey(getSignInKey())
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
+    }
+
 }
