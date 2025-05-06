@@ -20,6 +20,8 @@ public class CorsConfig {
         config.setAllowedMethods(List.of("*"));
         config.setAllowedHeaders(List.of("*"));
         config.setExposedHeaders(List.of("Authorization"));
+        config.setExposedHeaders(List.of("X-Admin-Secret"));
+        config.setExposedHeaders(List.of("X-Total-Count"));
         config.setAllowCredentials(true);
         config.setMaxAge(3600L);
 

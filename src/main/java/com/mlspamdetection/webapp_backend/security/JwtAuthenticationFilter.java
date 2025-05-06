@@ -1,11 +1,10 @@
 package com.mlspamdetection.webapp_backend.security;
-
-import com.mlspamdetection.webapp_backend.model.User;
 import com.mlspamdetection.webapp_backend.repo.UserRepository;
+import com.mlspamdetection.webapp_backend.model.User;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -14,7 +13,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.util.Collections;
+import java.util.Collection;
 
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
@@ -52,26 +51,24 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             try {
-                // Make a final copy of jwt for use in the lambda
                 final String tokenForValidation = jwt;
-
-                // Get the actual User entity instead of UserDetails
-                String finalUsername = username;
-                User user = userRepository.findByEmail(username)
-                        .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + finalUsername));
-
                 if (jwtUtil.validateToken(tokenForValidation)) {
-                    // Use the User entity as the principal with empty authorities since User doesn't implement getAuthorities
-                    UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                            user, null, Collections.emptyList());
-                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                    SecurityContextHolder.getContext().setAuthentication(authToken);
-                    System.out.println("Authentication successful for user: " + username);
+                    Collection<? extends GrantedAuthority> authorities = jwtUtil.getAuthoritiesFromToken(tokenForValidation);
+                    User userEntity = userRepository.findByEmail(username).orElse(null);
+                    if (userEntity != null) {
+                        UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                            userEntity, null, authorities);
+                        authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                        SecurityContextHolder.getContext().setAuthentication(authToken);
+                        System.out.println("Authentication successful for user: " + username);
+                    } else {
+                        System.out.println("User not found in database for username: " + username);
+                    }
                 } else {
                     System.out.println("Token validation failed for user: " + username);
                 }
-            } catch (UsernameNotFoundException e) {
-                System.err.println("User not found: " + e.getMessage());
+            } catch (Exception e) {
+                System.err.println("JWT authentication failed: " + e.getMessage());
             }
         }
 

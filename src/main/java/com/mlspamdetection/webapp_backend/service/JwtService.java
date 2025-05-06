@@ -52,36 +52,44 @@ public class JwtService {
                 .getBody();
     }
 
-    public boolean isTokenExpired(String token) {
+    private Boolean isTokenExpired(String token) {
         return extractExpiration(token).before(new Date());
     }
 
     public String generateAccessToken(User user) {
         Map<String, Object> claims = new HashMap<>();
-        claims.put("role", "USER"); // Add user role
-        return createToken(claims, user.getEmail(), accessTokenExpiration);
-    }
-
-    public String generateRefreshToken(User user) {
-        return createToken(new HashMap<>(), user.getEmail(), refreshTokenExpiration);
-    }
-
-    private String createToken(Map<String, Object> claims, String subject, long expiration) {
+        claims.put("role", user.getRole().name());
         return Jwts.builder()
-                .setClaims(claims)
-                .setSubject(subject)
-                .setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis() + expiration))
-                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
+                .claims(claims)
+                .subject(user.getEmail())
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis() + accessTokenExpiration))
+                .signWith(getSigningKey())
                 .compact();
     }
 
-    public boolean validateToken(String token) {
+    public String generateRefreshToken(User user) {
+        return Jwts.builder()
+                .subject(user.getEmail())
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis() + refreshTokenExpiration))
+                .signWith(getSigningKey())
+                .compact();
+    }
+
+    public Boolean validateToken(String token) {
         try {
-            Jwts.parser().setSigningKey(getSigningKey()).build().parseClaimsJws(token);
+            Jwts.parser()
+                .setSigningKey(getSigningKey())
+                .build()
+                .parseClaimsJws(token);
             return !isTokenExpired(token);
         } catch (Exception e) {
             return false;
         }
+    }
+
+    public String extractRole(String token) {
+        return extractClaim(token, claims -> claims.get("role", String.class));
     }
 }

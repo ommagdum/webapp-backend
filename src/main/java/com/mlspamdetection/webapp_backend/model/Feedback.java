@@ -12,8 +12,8 @@ public class Feedback {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "prediction_id")
-    private Long predictionId;
+    @ManyToOne
+    private PredictionLog prediction;
 
     @Column(name = "corrected_label")
     private String correctedLabel;
@@ -42,12 +42,12 @@ public class Feedback {
         this.id = id;
     }
 
-    public Long getPredictionId() {
-        return predictionId;
+    public PredictionLog getPrediction() {
+        return prediction;
     }
 
-    public void setPredictionId(Long predictionId) {
-        this.predictionId = predictionId;
+    public void setPrediction(PredictionLog prediction) {
+        this.prediction = prediction;
     }
 
     public String getCorrectedLabel() {

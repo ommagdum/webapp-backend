@@ -25,17 +25,20 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
 
-        // Make sure this condition is correct
         if (!"google".equals(user.getAuthProvider()) && !user.isVerified()) {
             throw new UsernameNotFoundException("User email not verified");
         }
 
+        // Fetch roles dynamically
+        Collection<SimpleGrantedAuthority> authorities = Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
+
         return org.springframework.security.core.userdetails.User.builder()
                 .username(user.getEmail())
                 .password(user.getPassword())
-                .roles("USER")
+                .authorities(authorities) // Set authorities dynamically
                 .build();
     }
+
 
 }
 

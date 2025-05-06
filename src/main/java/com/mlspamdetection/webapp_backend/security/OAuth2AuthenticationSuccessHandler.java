@@ -1,7 +1,6 @@
 package com.mlspamdetection.webapp_backend.security;
 
 import com.mlspamdetection.webapp_backend.model.User;
-import com.mlspamdetection.webapp_backend.security.JwtUtil;
 import com.mlspamdetection.webapp_backend.service.UserService;
 import com.mlspamdetection.webapp_backend.util.GoogleUserData;
 import jakarta.servlet.ServletException;
@@ -9,6 +8,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.security.oauth2.core.user.OAuth2User;
@@ -16,6 +16,7 @@ import org.springframework.security.web.authentication.SimpleUrlAuthenticationSu
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.util.stream.Collectors;
 
 @Component
 public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
@@ -56,14 +57,17 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
 
             User user = userService.findOrCreateGoogleUser(userData);
 
-            // Generate JWT
+            // Generate JWT with roles
             UserDetails userDetails = org.springframework.security.core.userdetails.User.builder()
                     .username(user.getEmail())
                     .password(user.getPassword())
-                    .roles("USER")
+                    .roles(user.getRole().name())
                     .build();
-
-            String jwt = jwtUtil.generateToken(userDetails);
+            var roles = userDetails.getAuthorities().stream()
+                    .map(GrantedAuthority::getAuthority)
+                    .map(auth -> auth.replaceFirst("^ROLE_", ""))
+                    .collect(Collectors.toList());
+            String jwt = jwtUtil.generateToken(userDetails, roles);
 
             // Redirect to frontend with token
             String redirectUrl = redirectUri + "?token=" + jwt;

@@ -10,7 +10,6 @@ import com.mlspamdetection.webapp_backend.util.GoogleTokenVerifier;
 import com.mlspamdetection.webapp_backend.util.GoogleUserData;
 import jakarta.mail.MessagingException;
 import jakarta.validation.Valid;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -19,18 +18,17 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
-import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
-    private static final org.slf4j.Logger logger = LoggerFactory.getLogger(AuthController.class);
     private final AuthenticationManager authenticationManager;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -87,7 +85,12 @@ public class AuthController {
                     new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
             );
 
-            String jwt = jwtUtil.generateToken((UserDetails) authentication.getPrincipal());
+            UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+            List<String> roles = userDetails.getAuthorities().stream()
+                    .map(GrantedAuthority::getAuthority)
+                    .map(auth -> auth.replaceFirst("^ROLE_", ""))
+                    .collect(Collectors.toList());
+            String jwt = jwtUtil.generateToken(userDetails, roles);
             return ResponseEntity.ok().body(Map.of(
                     "token", jwt,
                     "message", "Login successful"
@@ -154,7 +157,11 @@ public class AuthController {
                     .roles("USER")
                     .build();
 
-            String jwt = jwtUtil.generateToken(userDetails);
+            List<String> roles = userDetails.getAuthorities().stream()
+                    .map(GrantedAuthority::getAuthority)
+                    .map(auth -> auth.replaceFirst("^ROLE_", ""))
+                    .collect(Collectors.toList());
+            String jwt = jwtUtil.generateToken(userDetails, roles);
             System.out.println("JWT generated successfully");
 
             return ResponseEntity.ok()
@@ -229,7 +236,11 @@ public class AuthController {
                     .roles("USER")
                     .build();
 
-            String newAccessToken = jwtUtil.generateToken(userDetails);
+            List<String> roles = userDetails.getAuthorities().stream()
+                    .map(GrantedAuthority::getAuthority)
+                    .map(auth -> auth.replaceFirst("^ROLE_", ""))
+                    .collect(Collectors.toList());
+            String newAccessToken = jwtUtil.generateToken(userDetails, roles);
             String newRefreshToken = UUID.randomUUID().toString(); // Or use jwtUtil to generate a refresh token
 
             // Update refresh token in database

@@ -1,6 +1,10 @@
 package com.mlspamdetection.webapp_backend.repo;
 
 import com.mlspamdetection.webapp_backend.model.User;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -14,4 +18,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByVerificationToken(String token);
 
     boolean existsByEmail(String email);
+    Optional<User> findByGoogleId(String googleId);
+    Page<User> findAll(Pageable pageable);
 }
