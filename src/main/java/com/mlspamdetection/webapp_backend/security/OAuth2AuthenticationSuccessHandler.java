@@ -24,7 +24,7 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
     private final JwtUtil jwtUtil;
     private final UserService userService;
 
-    @Value("${app.oauth2.redirectUri:http://localhost:5173/oauth2/redirect}")
+    @Value("${app.oauth2.redirect-frontend-url}")
     private String redirectUri;
 
     public OAuth2AuthenticationSuccessHandler(JwtUtil jwtUtil, UserService userService) {
