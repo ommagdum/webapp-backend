@@ -12,18 +12,57 @@ import org.springframework.web.client.RestTemplate;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Client service for communicating with the ML prediction service.
+ * 
+ * <p>This service acts as a client to the external machine learning service that
+ * performs spam detection. It handles the HTTP communication, request formatting,
+ * and response parsing required to obtain spam predictions for email text.</p>
+ * 
+ * <p>The service uses Spring's RestTemplate to make HTTP requests to the ML service
+ * endpoint configured via application properties. It includes error handling and
+ * logging to help diagnose issues with the ML service communication.</p>
+ */
 @Service
 @Slf4j
 public class MLServiceClient {
+    /**
+     * URL of the ML service endpoint, injected from application properties.
+     */
     @Value("${ml.service.url}")
     private String mlServiceUrl;
 
+    /**
+     * RestTemplate instance for making HTTP requests to the ML service.
+     */
     private final RestTemplate restTemplate;
 
+    /**
+     * Constructs a new MLServiceClient with a default RestTemplate.
+     */
     public MLServiceClient() {
         this.restTemplate = new RestTemplate();
     }
 
+    /**
+     * Sends an email text to the ML service and retrieves a spam prediction.
+     * 
+     * <p>This method performs the following steps:</p>
+     * <ol>
+     *   <li>Prepares an HTTP request with the email text as JSON payload</li>
+     *   <li>Sends the request to the ML service's prediction endpoint</li>
+     *   <li>Processes the response to extract the prediction result</li>
+     *   <li>Handles various response formats and error conditions</li>
+     * </ol>
+     * 
+     * <p>The method is designed to be resilient to different response formats from the ML service,
+     * handling both numeric (0/1) and string ("ham"/"spam") prediction values, as well as
+     * nested response structures.</p>
+     *
+     * @param emailText the email text to analyze for spam detection
+     * @return a PredictionResult containing the classification ("spam" or "ham") and confidence score
+     * @throws RuntimeException if communication with the ML service fails or returns an error
+     */
     public PredictionResult getPrediction(String emailText) {
         try {
             HttpHeaders headers = new HttpHeaders();

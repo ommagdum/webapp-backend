@@ -41,7 +41,6 @@ public class User {
     @CreationTimestamp
     private LocalDateTime createdAt;
 
-    
 
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
