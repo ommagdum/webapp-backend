@@ -1,14 +1,22 @@
-# Use an official JDK base image
-FROM eclipse-temurin:17-jdk
+# ---------- Stage 1: Build ----------
+FROM maven:3.9.6-eclipse-temurin-17 as builder
 
-# Set working directory
 WORKDIR /app
 
-# Copy the built jar into the container (we'll build it first)
-COPY target/*.jar app.jar
+# Copy source code
+COPY . .
 
-# Expose the app port (Spring Boot default is 8080)
+# Build the jar
+RUN mvn clean package -DskipTests
+
+# ---------- Stage 2: Run ----------
+FROM eclipse-temurin:17-jdk
+
+WORKDIR /app
+
+# Copy the built jar from the builder stage
+COPY --from=builder /app/target/*.jar app.jar
+
 EXPOSE 8080
 
-# Run the app
 ENTRYPOINT ["java", "-jar", "app.jar"]
